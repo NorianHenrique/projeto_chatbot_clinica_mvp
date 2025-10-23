@@ -1,99 +1,72 @@
-# 🤖 Chatbot de Clínica Médica com IA (MVP)
+# 🤖 Chatbot de Clínica Médica com IA (MVP Funcional - Telegram)
 
-Este é um projeto de MVP (Minimum Viable Product) para um chatbot de atendimento de clínica médica, utilizando a API do WhatsApp, FastAPI e a IA do Google (Gemini) para processamento de linguagem natural.
+Este é um projeto de MVP (Minimum Viable Product) **funcional** para um chatbot de atendimento de clínica médica, utilizando a **API do Telegram**, FastAPI (Python) e a IA do Google (Gemini) para processamento de linguagem natural e gerenciamento de fluxo de conversa.
 
-O objetivo é criar um agente de IA capaz de entender as solicitações do usuário (como agendamentos, cancelamentos e consultas de informação) e, futuramente, interagir com um banco de dados para fornecer respostas e executar ações.
+O objetivo foi criar um agente de IA capaz de entender solicitações complexas de usuários (agendamentos, cancelamentos, consultas), interagir com um banco de dados (SQLite) para buscar informações e registrar ações, mantendo o contexto da conversa através de múltiplos passos.
 
-## 🚀 Status Atual do Projeto
+## ✅ Status Atual do Projeto: MVP Completo!
 
-O projeto está atualmente no final da **Fase 3**. O "cérebro" do chatbot está funcional, mas o "braço" (envio de mensagens) está bloqueado por um bug na conta de teste da API da Meta.
+O projeto alcançou o status de MVP funcional. Todas as funcionalidades principais planejadas foram implementadas e testadas com sucesso usando a API do Telegram.
 
-### O que JÁ Fizemos (Funcional):
+### O que Foi Feito (Funcionalidades Implementadas):
 
-* **Fase 0: Ambiente**
-    * Configuração do ambiente virtual Python (`venv`).
-    * Instalação das dependências (FastAPI, Uvicorn, Google-GenerativeAI, Requests, DotEnv).
+* **Canal de Comunicação:** Integração completa com a **API do Telegram** (Webhook para receber mensagens, API para enviar respostas).
+    * *(Nota: A integração inicial com a API do WhatsApp foi abandonada devido a bloqueios e instabilidade da conta de teste da Meta).*
+* **Processamento de Linguagem Natural (IA):**
+    * Uso do **Google Gemini (Flash)** como cérebro do agente.
+    * **Prompt de Sistema Detalhado:** Define a persona, regras, ferramentas e fluxos de conversa multi-etapas (agendamento, cancelamento).
+    * **Saída Estruturada em JSON:** A IA comunica suas intenções e dados extraídos de forma confiável para o backend Python.
+    * **Classificação de Intenção:** Identifica corretamente `agendamento` (consulta/exame), `cancelamento` (consulta/exame), `consulta_info`, `saudacao`, `despedida`, `fora_de_escopo`.
+    * **Extração de Entidades:** Extrai dados relevantes como `especialidade`, `topic`, `horario_id`, `nome_paciente`, `agendamento_id`, `tipo_exame`, `horario_exame_id`.
+* **Backend e Lógica:**
+    * Servidor **FastAPI** robusto e refatorado, separando responsabilidades (Servidor, Agente, Utilitários).
+    * **Gerenciamento de Estado (Memória):** Um dicionário em memória (`CONVERSATION_STATE`) mantém o contexto da conversa durante fluxos multi-etapas (ex: lembra o ID do horário enquanto pergunta o nome).
+    * **Fluxo RAG (Retrieval-Augmented Generation):** O agente consulta o banco de dados via "ferramentas" e usa a informação obtida para gerar a resposta final com a IA.
+* **Banco de Dados (SQLite):**
+    * Estrutura de banco de dados definida para `info`, `medicos`, `horarios_disponiveis`, `exames`, `horarios_exames`, `agendamentos`, `agendamentos_exames`.
+    * **Ferramentas de Leitura:** Consulta de informações gerais, horários de consulta/exame, listagem de agendamentos/exames do usuário.
+    * **Ferramentas de Escrita:** Marcação e cancelamento de agendamentos/exames, com atualização de status dos horários.
+* **Organização do Projeto:**
+    * Código refatorado em módulos (`config.py`, `telegram_utils.py`, `agent.py`, `main.py`, `database_tools.py`).
+    * `requirements.txt` para fácil instalação de dependências.
+    * `.gitignore` configurado.
+    * Este `README.md` documentando o projeto.
 
-* **Fase 1: Webhook (Ouvir)**
-    * O backend em **FastAPI** está rodando.
-    * O `ngrok` está expondo o servidor local para a web.
-    * O Webhook da API do WhatsApp (Meta) está **verificado e configurado** com sucesso.
-    * Nosso servidor recebe e processa corretamente os payloads `POST` (mensagens) e `GET` (verificação) da Meta.
+### Funcionalidades Específicas do Chatbot:
 
-* **Fase 2: IA (Pensar)**
-    * A API do Google **Gemini** está integrada.
-    * Um **Prompt de Sistema** robusto foi desenvolvido para instruir a IA a agir como um agente de backend, forçando-a a responder em **JSON estruturado**.
-    * A IA consegue classificar intenções (`agendamento`, `consulta_info`, `fora_de_escopo`), extrair entidades (`topico: "endereco"`) e decidir qual ação o Python deve tomar (`RESPONDER_AO_USUARIO` ou `EXECUTAR_FERRAMENTA`).
-    * Nosso script Python consegue analisar o JSON da IA com sucesso.
-
-### O que Falta Fazer (Próximas Etapas):
-
-* **Fase 3: Ação (Responder) - ⚠️ BLOQUEADO**
-    * A lógica para *tentar* enviar a resposta está implementada.
-    * **PROBLEMA ATUAL:** A API de teste da Meta está retornando um erro `400 Bad Request` persistente em todas as tentativas de envio de mensagem (seja texto simples ou templates). Isso foi validado como um **bug da conta de teste da Meta**, pois a própria ferramenta de "Enviar Mensagem" da UI da Meta também falha (diz que envia, mas a mensagem não chega).
-    * **Decisão:** Vamos pausar a depuração do envio e focar na lógica de backend (Fase 4), assumindo que o envio funcionará em um ambiente de produção.
-
-* **Fase 4: Conexão com Banco de Dados (SQLite)**
-    * Implementar as "ferramentas" (`tools`) que a IA pode solicitar.
-    * Conectar o FastAPI ao **SQLite** para buscar dados reais (ex: buscar o endereço da clínica quando a IA pedir `tool_obter_info_clinica`).
-    * Implementar o fluxo de **RAG (Retrieval-Augmented Generation)**: (Usuário pergunta -> IA pede ferramenta -> Python busca no DB -> Python chama a IA de novo com o dado -> IA gera a resposta final).
-
-* **Fase 5: MVP Funcional**
-    * Implementar as ferramentas de escrita no banco (Agendamento, Cancelamento).
+* **Consulta de Informações:** Responde sobre endereço, horário de funcionamento e convênios.
+* **Agendamento de Consultas:** Guia o usuário na escolha da especialidade, mostra horários disponíveis (com IDs), pede o nome e confirma o agendamento.
+* **Cancelamento de Consultas:** Lista os agendamentos do usuário (com IDs), pergunta qual cancelar e confirma o cancelamento, liberando o horário.
+* **Agendamento de Exames Simples:** Lista os tipos de exame, ou busca horários para um exame específico, guia na escolha do horário (com IDs), pede o nome e confirma o agendamento.
+* **Cancelamento de Exames:** Lista os exames agendados pelo usuário (com IDs), pergunta qual cancelar e confirma o cancelamento, liberando o horário.
+* **Tratamento de Perguntas Fora de Escopo.**
 
 ## 🛠️ Stack de Tecnologia
 
 * **Backend:** FastAPI (Python)
 * **Servidor:** Uvicorn
-* **IA (LLM):** Google Gemini (via `google-generativeai`)
-* **Canal (API):** API Oficial do WhatsApp Business (Meta)
+* **IA (LLM):** Google Gemini Flash (via `google-generativeai`)
+* **Canal (API):** API Oficial do Telegram
 * **Banco de Dados:** SQLite
 * **Túnel (Testes):** ngrok
 
-## 🏁 Como Executar (Para Colegas)
+## 🏁 Como Executar
 
-1.  **Clone este repositório:**
-    ```bash
-    git clone [URL_DO_SEU_REPOSITORIO]
-    cd [NOME_DA_PASTA]
-    ```
+1.  **Clone o repositório:** `git clone [URL]` e `cd [PASTA]`
+2.  **Crie e ative o venv:** `python -m venv venv` e ative (`.\venv\Scripts\activate` ou `source venv/bin/activate`).
+3.  **Instale as dependências:** `pip install -r requirements.txt`
+4.  **Crie e preencha o `.env`:** Copie o `.env.example`, renomeie para `.env` e adicione suas chaves da API do Google Gemini e do BotFather (Telegram).
+5.  **Configure o Banco de Dados (Uma vez):** `python database_setup.py`
+6.  **Inicie o servidor FastAPI (Terminal 1):** `uvicorn main:app --reload`
+7.  **Inicie o túnel ngrok (Terminal 2):** `ngrok http 8000` (copie a URL `https://...`)
+8.  **Configure o Webhook no Telegram (Uma vez por URL do ngrok):** `python set_webhook.py` (cole a URL do ngrok quando pedir).
+9.  **Converse com seu bot no Telegram!**
 
-2.  **Crie e ative o ambiente virtual:**
-    ```bash
-    python -m venv venv
-    # No Windows:
-    .\venv\Scripts\activate
-    # No macOS/Linux:
-    source venv/bin/activate
-    ```
+## 🚀 Próximos Passos Possíveis (Pós-MVP)
 
-3.  **Instale as dependências:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Crie seu arquivo de "segredos":**
-    * Crie um arquivo chamado `.env` na raiz do projeto.
-    * Copie o conteúdo do `env.example` para dentro do `.env`.
-    * Preencha com suas próprias chaves (obtenha as chaves da Meta e do Google AI Studio).
-
-5.  **Configure o Banco de Dados (Uma vez):**
-    ```bash
-    python database_setup.py
-    ```
-
-6.  **Inicie o servidor FastAPI (Terminal 1):**
-    ```bash
-    uvicorn main:app --reload
-    ```
-
-7.  **Inicie o túnel ngrok (Terminal 2):**
-    ```bash
-    ngrok http 8000
-    ```
-
-8.  **Configure o Webhook na Meta:**
-    * Copie a URL `https...` do ngrok.
-    * Cole-a no painel do seu App da Meta (WhatsApp > Configuração da API > Webhook), adicionando `/webhook/whatsapp` no final.
-    * Adicione seu `VERIFY_TOKEN` (do `.env`) na plataforma.
-    * Assine o evento `messages`.
+* **Melhorar a Gestão de Estado:** Usar Redis ou um banco de dados para a memória (`CONVERSATION_STATE`), em vez de um dicionário Python (que se perde ao reiniciar o servidor).
+* **Adicionar Autenticação/Identificação do Paciente:** Integrar com o cadastro real de pacientes da clínica (talvez pedindo CPF ou data de nascimento).
+* **Gerenciamento de Horários Mais Complexo:** Lidar com durações diferentes de consulta/exame, bloqueio de horários, etc.
+* **Interface Administrativa:** Um painel para a clínica ver os agendamentos feitos pelo bot.
+* **Deploy:** Publicar o bot em um servidor na nuvem (ex: Railway, Vercel, Google Cloud Run) para que ele funcione 24/7 sem `ngrok`.
+* **(Opcional) Tentar Novamente com WhatsApp:** Com um número de telefone *real* e uma conta empresarial *verificada* na Meta, a API do WhatsApp pode ser mais estável.
