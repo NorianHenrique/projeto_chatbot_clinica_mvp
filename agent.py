@@ -127,18 +127,20 @@ Você é um Agente de IA de processamento de linguagem natural. Seu trabalho é 
 
 # --- FUNÇÃO PRINCIPAL DO AGENTE ---
 
-def handle_message(user_chat_id: str, user_message: str):
+def handle_message(user_chat_id: str, user_message: str) -> str | None:
     """
-    Esta é a função principal que processa a mensagem do usuário.
-    Contém toda a lógica de memória, IA e RAG.
+    Processa a mensagem do usuário e RETORNA a resposta do bot como string,
+    ou None se não houver resposta direta (ex: erro interno).
     """
+    final_bot_reply = None # Variável para guardar a resposta final
     try:
         # --- LÓGICA DE MEMÓRIA (FINAL) ---
         state_key = str(user_chat_id)
         current_state = CONVERSATION_STATE.get(state_key)
-        
+
         augmented_message = user_message
-        
+
+        # (Lógica if current_state... para adicionar contexto - IDÊNTICA À ANTERIOR)
         if current_state:
             print(f"--- MEMÓRIA: Estado encontrado: {current_state['state']} ---")
             state = current_state['state']
@@ -148,7 +150,7 @@ def handle_message(user_chat_id: str, user_message: str):
                 horario_id = context.get('horario_id')
                 augmented_message = f"[CONTEXTO: O usuário já escolheu o horario_id de consulta: {horario_id}. Esta mensagem é o NOME dele para o agendamento.] MENSAGEM DO USUÁRIO: {user_message}"
                 del CONVERSATION_STATE[state_key]
-            
+
             elif state == 'AWAITING_SLOT_CHOICE':
                 horarios_mostrados = context.get('horarios_mostrados')
                 augmented_message = f"[CONTEXTO: O usuário está escolhendo um ID da lista de horários de consulta que você acabou de mostrar: '{horarios_mostrados}'.] MENSAGEM DO USUÁRIO: {user_message}"
@@ -157,7 +159,7 @@ def handle_message(user_chat_id: str, user_message: str):
                 agendamentos_mostrados = context.get('agendamentos_mostrados')
                 augmented_message = f"[CONTEXTO: O usuário está escolhendo um ID da lista de agendamentos para cancelar que você acabou de mostrar: '{agendamentos_mostrados}'.] MENSAGEM DO USUÁRIO: {user_message}"
                 del CONVERSATION_STATE[state_key]
-            
+
             elif state == 'AWAITING_EXAM_TYPE':
                 exames_mostrados = context.get('exames_mostrados')
                 augmented_message = f"[CONTEXTO: O usuário está escolhendo um tipo de exame da lista que você acabou de mostrar: '{exames_mostrados}'.] MENSAGEM DO USUÁRIO: {user_message}"
@@ -173,7 +175,6 @@ def handle_message(user_chat_id: str, user_message: str):
                 augmented_message = f"[CONTEXTO: O usuário já escolheu o tipo de exame '{tipo_exame_escolhido}' e o horario_exame_id: {horario_exame_id}. Esta mensagem é o NOME dele para o agendamento do exame.] MENSAGEM DO USUÁRIO: {user_message}"
                 del CONVERSATION_STATE[state_key]
 
-           
             elif state == 'AWAITING_EXAM_CANCELLATION_CHOICE':
                 agendamentos_exames_mostrados = context.get('agendamentos_exames_mostrados')
                 augmented_message = f"[CONTEXTO: O usuário está escolhendo um ID da lista de agendamentos de EXAME para cancelar que você acabou de mostrar: '{agendamentos_exames_mostrados}'.] MENSAGEM DO USUÁRIO: {user_message}"
@@ -181,14 +182,14 @@ def handle_message(user_chat_id: str, user_message: str):
 
 
         print(f"--- Mensagem do Usuário Extraída (com contexto se houver) ---")
-        print(f"De Chat ID: {user_chat_id}")
+        print(f"De Chat ID/User: {user_chat_id}") # Mudança pequena no log
         print(f"Texto: {augmented_message}")
         print("-----------------------------------")
-        
+
         # --- CÉREBRO (IDÊNTICO) ---
         if not model:
             print("ERRO: Modelo do Gemini não foi carregado.")
-            return
+            return "Desculpe, a inteligência artificial não está disponível no momento."
 
         print("Enviando para o Gemini (Chamada 1)...")
         chat = model.start_chat(history=[
@@ -200,8 +201,8 @@ def handle_message(user_chat_id: str, user_message: str):
         print("--- Resposta JSON (Chamada 1) do Gemini Recebida ---")
         print(ai_json_response_str)
         print("--------------------------------------------------")
-        
-        # --- LÓGICA DE AÇÃO (RAG) (FINAL) ---
+
+        # --- LÓGICA DE AÇÃO (RAG) (MODIFICADA PARA RETORNAR) ---
         try:
             ai_data = json.loads(ai_json_response_str)
             action = ai_data.get("acao_requerida")
@@ -211,31 +212,21 @@ def handle_message(user_chat_id: str, user_message: str):
 
             if action == "RESPONDER_AO_USUARIO":
                 print(f"--- Ação: Responder Diretamente ---")
-                
+                final_bot_reply = resposta_texto # Guarda a resposta para retornar
+
                 # --- LÓGICA DE MEMÓRIA PÓS-RESPOSTA (FINAL) ---
+                # (Lógica if/elif para salvar estados - IDÊNTICA À ANTERIOR)
                 if "horario_id" in entidades and entidades["horario_id"] is not None and current_state and current_state['state'] == 'AWAITING_SLOT_CHOICE':
                     horario_id_selecionado = entidades["horario_id"]
-                    CONVERSATION_STATE[state_key] = {
-                        "state": "AWAITING_NAME",
-                        "context": { "horario_id": horario_id_selecionado }
-                    }
+                    CONVERSATION_STATE[state_key] = {"state": "AWAITING_NAME", "context": { "horario_id": horario_id_selecionado }}
                     print(f"--- MEMÓRIA: Salvo estado 'AWAITING_NAME' para ID Consulta: {horario_id_selecionado} ---")
-                
                 elif "horario_exame_id" in entidades and entidades["horario_exame_id"] is not None and current_state and current_state['state'] == 'AWAITING_EXAM_SLOT_CHOICE':
                     horario_exame_id_selecionado = entidades["horario_exame_id"]
                     tipo_exame_context = current_state.get('context', {}).get('tipo_exame') 
-                    CONVERSATION_STATE[state_key] = {
-                        "state": "AWAITING_NAME_FOR_EXAM",
-                        "context": { 
-                            "horario_exame_id": horario_exame_id_selecionado,
-                            "tipo_exame": tipo_exame_context 
-                        }
-                    }
+                    CONVERSATION_STATE[state_key] = {"state": "AWAITING_NAME_FOR_EXAM", "context": { "horario_exame_id": horario_exame_id_selecionado,"tipo_exame": tipo_exame_context }}
                     print(f"--- MEMÓRIA: Salvo estado 'AWAITING_NAME_FOR_EXAM' para ID Exame: {horario_exame_id_selecionado} ---")
-                
-                
-                send_telegram_message(user_chat_id, resposta_texto)
-                    
+
+
             elif action == "EXECUTAR_FERRAMENTA":
                 print("--- Ação: Executar Ferramenta (RAG) ---")
                 tool_request = payload_acao.get("ferramenta_solicitada", {})
@@ -243,18 +234,19 @@ def handle_message(user_chat_id: str, user_message: str):
                 tool_params = tool_request.get("parametros", {})
 
                 if tool_name and tool_name in AVAILABLE_TOOLS:
-                    
+
                     # --- INJEÇÃO DE PARÂMETROS (FINAL) ---
                     if tool_name in ["tool_marcar_agendamento", "tool_listar_meus_agendamentos", 
                                      "tool_cancelar_agendamento", "tool_marcar_exame", 
-                                     "tool_listar_meus_exames_agendados", "tool_cancelar_exame"]: 
-                        tool_params["telegram_chat_id"] = state_key
-                    
+                                     "tool_listar_meus_exames_agendados", "tool_cancelar_exame"]:
+                        tool_params["telegram_chat_id"] = state_key # Usa state_key que pode ser chat_id ou "web_user"
+
                     print(f"--- Executando Ferramenta: {tool_name} com params: {tool_params} ---")
                     tool_function = AVAILABLE_TOOLS[tool_name]
                     db_result = tool_function(**tool_params)
-                    
+
                     # --- LÓGICA DE MEMÓRIA PÓS-FERRAMENTA (FINAL) ---
+                    # (Lógica if/elif para salvar estados - IDÊNTICA À ANTERIOR)
                     if tool_name == "tool_consultar_horarios_disponiveis":
                         CONVERSATION_STATE[state_key] = {"state": "AWAITING_SLOT_CHOICE", "context": { "horarios_mostrados": db_result }}
                         print(f"--- MEMÓRIA: Salvo estado 'AWAITING_SLOT_CHOICE' ---")
@@ -271,7 +263,6 @@ def handle_message(user_chat_id: str, user_message: str):
                             tipo_exame_escolhido = tool_params.get("tipo_exame", "Desconhecido") 
                             CONVERSATION_STATE[state_key] = {"state": "AWAITING_EXAM_SLOT_CHOICE", "context": { "horarios_exame_mostrados": db_result, "tipo_exame": tipo_exame_escolhido }}
                             print(f"--- MEMÓRIA: Salvo estado 'AWAITING_EXAM_SLOT_CHOICE' para o exame '{tipo_exame_escolhido}' ---")
-                    # --- NOVO ESTADO PARA CANCELAR EXAME ---
                     elif tool_name == "tool_listar_meus_exames_agendados":
                          if "Você não possui agendamentos de exames" not in db_result:
                             CONVERSATION_STATE[state_key] = {"state": "AWAITING_EXAM_CANCELLATION_CHOICE", "context": { "agendamentos_exames_mostrados": db_result }}
@@ -285,29 +276,32 @@ def handle_message(user_chat_id: str, user_message: str):
                     print("--- Resposta JSON Final (RAG) do Gemini Recebida ---")
                     print(final_ai_json_str)
                     print("--------------------------------------------------")
-                    
+
                     final_ai_data = json.loads(final_ai_json_str)
-                    
+
                     if final_ai_data.get("acao_requerida") == "RESPONDER_AO_USUARIO":
                         final_response_text = final_ai_data["payload_acao"]["resposta_para_usuario"]
                         print(f"--- Ação: Responder com dados do DB ---")
-                        send_telegram_message(user_chat_id, final_response_text)
+                        final_bot_reply = final_response_text # Guarda a resposta para retornar
                     else:
                         print("ERRO RAG: A IA não gerou uma resposta final, mesmo após os dados do DB.")
-                        send_telegram_message(user_chat_id, "Desculpe, tive um problema ao processar sua solicitação após consultar os dados.")
+                        final_bot_reply = "Desculpe, tive um problema ao processar sua solicitação após consultar os dados."
                 else:
                     print(f"ERRO: A IA solicitou uma ferramenta desconhecida: {tool_name}")
-                    send_telegram_message(user_chat_id, "Desculpe, a IA pediu uma ferramenta que eu não conheço.")
+                    final_bot_reply = "Desculpe, a IA pediu uma ferramenta que eu não conheço."
             else:
                 print(f"Ação desconhecida recebida da IA: {action}")
-                send_telegram_message(user_chat_id, f"Desculpe, recebi uma ação desconhecida ({action}) e não sei o que fazer.")
+                final_bot_reply = f"Desculpe, recebi uma ação desconhecida ({action}) e não sei o que fazer."
 
         except json.JSONDecodeError:
             print("ERRO FATAL: Gemini retornou um JSON inválido.")
             print(ai_json_response_str) 
-            send_telegram_message(user_chat_id, "Desculpe, a resposta da IA veio em um formato inválido.")
+            final_bot_reply = "Desculpe, a resposta da IA veio em um formato inválido."
+
+        # --- RETORNA A RESPOSTA FINAL ---
+        return final_bot_reply
 
     except Exception as e:
         print(f"Erro inesperado na função handle_message: {e}")
-        if user_chat_id:
-            send_telegram_message(user_chat_id, "Desculpe, ocorreu um erro interno grave ao processar sua mensagem.")
+        # Retorna uma mensagem de erro genérica
+        return "Desculpe, ocorreu um erro interno grave ao processar sua mensagem."

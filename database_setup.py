@@ -29,7 +29,7 @@ def setup_database():
     ''')
     medicos_data = [
         (1, 'Dra. Ana Silva', 'Cardiologia'),
-        (2, 'Dr. Bruno Costa', 'Dermatologia'),
+        (2, 'Dr. Bruno Costa', 'Dermatologista'),
         (3, 'Dr. Carlos Dias', 'Cardiologia')
     ]
     cursor.executemany("INSERT OR IGNORE INTO medicos (id, nome, especialidade) VALUES (?, ?, ?)", medicos_data)
@@ -49,12 +49,12 @@ def setup_database():
     # Vamos usar datas relativas ao dia que você está testando (23/10/2025)
     horarios_data = [
         # Horários para Dra. Ana Silva (Cardiologia)
-        (1, 1, '2025-10-24 09:00:00', 'disponivel'),
-        (2, 1, '2025-10-24 10:00:00', 'disponivel'),
+        (1, 1, '2025-11-24 09:00:00', 'disponivel'),
+        (2, 1, '2025-11-24 10:00:00', 'disponivel'),
         # Horários para Dr. Bruno Costa (Dermatologia)
-        (3, 2, '2025-10-24 14:00:00', 'disponivel'),
+        (3, 2, '2025-11-24 14:00:00', 'disponivel'),
         # Horários para Dr. Carlos Dias (Cardiologia)
-        (4, 3, '2025-10-24 09:00:00', 'disponivel')
+        (4, 3, '2025-11-24 09:00:00', 'disponivel')
     ]
     cursor.executemany("INSERT OR IGNORE INTO horarios_disponiveis (id, medico_id, data_hora_inicio, status) VALUES (?, ?, ?, ?)", horarios_data)
     print("Tabela 'horarios_disponiveis' e dados de exemplo inseridos.")
@@ -88,13 +88,13 @@ def setup_database():
     # Exemplo: Check-up (ID 1), Sangue (ID 2), ECG (ID 3)
     horarios_exames_data = [
         # Horários para Check-up Geral
-        (1, 1, '2025-10-25 08:00:00', 'disponivel'), 
-        (2, 1, '2025-10-25 08:30:00', 'disponivel'),
+        (1, 1, '2025-11-25 08:00:00', 'disponivel'), 
+        (2, 1, '2025-11-25 08:30:00', 'disponivel'),
         # Horários para Exame de Sangue (geralmente pela manhã)
-        (3, 2, '2025-10-25 07:00:00', 'disponivel'),
-        (4, 2, '2025-10-25 07:30:00', 'disponivel'),
+        (3, 2, '2025-11-25 07:00:00', 'disponivel'),
+        (4, 2, '2025-11-25 07:30:00', 'disponivel'),
         # Horários para ECG
-        (5, 3, '2025-10-25 10:00:00', 'disponivel') 
+        (5, 3, '2025-11-25 10:00:00', 'disponivel') 
     ]
     cursor.executemany("INSERT OR IGNORE INTO horarios_exames (id, exame_id, data_hora_inicio, status) VALUES (?, ?, ?, ?)", horarios_exames_data)
     print("Tabela 'horarios_exames' e dados de exemplo inseridos.")

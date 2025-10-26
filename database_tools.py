@@ -54,12 +54,14 @@ def tool_consultar_horarios_disponiveis(especialidade: str) -> str:
         SELECT h.id, m.nome, h.data_hora_inicio
         FROM horarios_disponiveis h
         JOIN medicos m ON h.medico_id = m.id
-        WHERE m.especialidade LIKE ? AND h.status = 'disponivel'
+        WHERE LOWER(m.especialidade) LIKE LOWER(?) AND h.status = 'disponivel'
         ORDER BY h.data_hora_inicio;
         """
+        # Prepara o parâmetro com wildcards
+        search_term = '%' + especialidade + '%'
 
         # Usamos '%' para permitir buscas parciais (ex: 'Cardio' encontra 'Cardiologia')
-        cursor.execute(query, ('%' + especialidade + '%',))
+        cursor.execute(query, (search_term,))
         resultados = cursor.fetchall()
         conn.close()
 
