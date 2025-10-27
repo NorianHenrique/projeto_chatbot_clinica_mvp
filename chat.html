@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Clínica - Gemini</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Variáveis de Cores */
+        :root {
+            --color-primary: #007bff; /* Azul primário */
+            --color-secondary: #28a745; /* Verde para mensagens do usuário */
+            --color-background: #f8f9fa; /* Fundo geral */
+            --color-chat-bg: #e9ecef; /* Fundo da janela do chat */
+            --color-text-dark: #343a40;
+            --color-text-light: #ffffff;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--color-background);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 450px; /* Mais estreito, como um app de celular */
+            background: var(--color-text-light);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            height: 90vh; /* Ocupa mais tela verticalmente */
+            overflow: hidden; /* Para garantir que o arredondamento funcione */
+        }
+
+        .chat-header {
+            background-color: var(--color-primary);
+            color: var(--color-text-light);
+            padding: 20px 15px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.2em;
+        }
+        
+        /* Janela de Mensagens */
+        .chat-window {
+            flex-grow: 1;
+            padding: 20px 15px;
+            overflow-y: auto;
+            background-color: var(--color-chat-bg);
+            /* Scrollbar estilizada */
+            scrollbar-width: thin;
+            scrollbar-color: var(--color-primary) #e9ecef;
+        }
+
+        /* Estilo da mensagem */
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            max-width: 85%;
+            line-height: 1.5;
+            position: relative;
+            word-wrap: break-word; /* Garante que mensagens longas quebrem a linha */
+        }
+        
+        /* Mensagem do Usuário (Nossa) */
+        .user-message {
+            background-color: var(--color-secondary);
+            color: var(--color-text-light);
+            margin-left: auto;
+            border-bottom-right-radius: 2px;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* Mensagem do Bot (Resposta) */
+        .bot-message {
+            background-color: var(--color-text-light);
+            color: var(--color-text-dark);
+            margin-right: auto;
+            border: 1px solid #dee2e6;
+            border-bottom-left-radius: 2px;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Área de Input */
+        .chat-input {
+            display: flex;
+            padding: 10px 15px;
+            border-top: 1px solid #ddd;
+            background-color: #fff;
+        }
+        
+        .chat-input input {
+            flex-grow: 1;
+            padding: 12px 18px;
+            border: 1px solid #ccc;
+            border-radius: 25px;
+            margin-right: 10px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input input:focus {
+            border-color: var(--color-primary);
+        }
+        
+        .chat-input button {
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        .chat-input button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        .chat-input button:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .chat-input button:disabled {
+            background-color: #a0c3e9;
+            cursor: not-allowed;
+        }
+        
+        /* Indicador de carregamento (Opcional, mas útil) */
+        .loading-dots {
+            display: inline-block;
+        }
+
+        .loading-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin: 0 2px;
+            background-color: var(--color-primary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots .dot1 { animation-delay: -0.32s; }
+        .loading-dots .dot2 { animation-delay: -0.16s; }
+        .loading-dots .dot3 { animation-delay: 0; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        🏥 Chatbot Clínica Médica
+    </div>
+    <div class="chat-window" id="chat-window">
+        <div class="message bot-message">
+            Olá! Eu sou a atendente virtual da clínica. Em que posso te ajudar hoje?
+        </div>
+        <div class="message bot-message" id="loading-indicator" style="display:none;">
+            <div class="loading-dots">
+                <span class="dot1"></span>
+                <span class="dot2"></span>
+                <span class="dot3"></span>
+            </div>
+        </div>
+    </div>
+    <div class="chat-input">
+        <input type="text" id="user-input" placeholder="Digite sua mensagem..." autofocus>
+        <button id="send-button">Enviar</button>
+    </div>
+</div>
+
+<script>
+   const API_ENDPOINT = 'https://projeto-chatbot-clinica-mvp.onrender.com/chat'; // Ou a URL do Render
+   const chatWindow = document.getElementById('chat-window');
+   const userInput = document.getElementById('user-input');
+   const sendButton = document.getElementById('send-button');
+   const loadingIndicator = document.getElementById('loading-indicator');
+    
+    let conversationHistory = []; // Mantém o histórico visual
+    let currentSessionId = null; // <-- NOVO: Guarda o ID da sessão atual
+
+    // ... (elementos da UI, addMessageToUI, scrollToBottom - idênticos) ...
+    function scrollToBottom() {
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function addMessageToUI(sender, text) {
+    // --- ADICIONE ESTE LOG ---
+    console.log(`addMessageToUI chamada com: sender=${sender}, text=${text}`); 
+    // -------------------------
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('message');
+    msgDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
+    msgDiv.textContent = text;
+
+    // --- ADICIONE ESTE LOG ---
+    if (!chatWindow) {
+         console.error("ERRO: Elemento chatWindow não encontrado!");
+         return; // Sai se não encontrar a janela
+    }
+    // -------------------------
+
+    chatWindow.appendChild(msgDiv); 
+    scrollToBottom();
+}
+
+    async function sendMessage() {
+        console.log("sendMessage foi chamada!");
+
+    // --- CORREÇÃO AQUI ---
+    const message = userInput.value.trim(); // 1. Pega o valor do input
+    if (message === "") return;             // 2. AGORA checa se está vazio
+    // --- FIM DA CORREÇÃO ---
+    // (O resto da UI: limpa input, desabilita botão, mostra msg usuário - continua aqui)
+    userInput.value = ''; // Limpa o input *depois* de pegar a mensagem
+    sendButton.disabled = true;
+    console.log("Antes de chamar addMessageToUI para o usuário. Mensagem:", message);
+    addMessageToUI('user', message);
+    console.log("Depois de chamar addMessageToUI para o usuário.");
+    loadingIndicator.style.display = 'flex';
+    scrollToBottom();
+    // 
+        // (Histórico local conversationHistory não é mais enviado, mas ainda usado para UI)
+        // conversationHistory.push({ role: "user", parts: [{ text: message }] }); 
+
+        try {
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // --- MUDANÇA AQUI: Envia o session_id atual ---
+                body: JSON.stringify({
+                    message: message,
+                    session_id: currentSessionId // Envia o ID atual (pode ser null na 1ª vez)
+                })
+            });
+
+            if (!response.ok) { throw new Error('Erro na API: ' + response.statusText); }
+
+            const data = await response.json();
+            const botReply = data.reply;
+            
+            // --- MUDANÇA AQUI: Guarda/Atualiza o session_id ---
+            currentSessionId = data.session_id; 
+            console.log("Session ID Atual:", currentSessionId); // Para debug no navegador
+
+            // ... (UI: esconde loading, mostra msg bot) ...
+            loadingIndicator.style.display = 'none';
+            addMessageToUI('bot', botReply);
+            
+            // (Histórico local para UI)
+            // conversationHistory.push({ role: "model", parts: [{ text: botReply }] }); 
+
+        } catch (error) {
+            // ... (código de tratamento de erro idêntico) ...
+            console.error('Erro ao comunicar com a API:', error);
+            loadingIndicator.style.display = 'none';
+            addMessageToUI('bot', '❌ Desculpe, erro ao conectar com o servidor.');
+        } finally {
+            // ... (código finally idêntico) ...
+            sendButton.disabled = false;
+            userInput.focus();
+            scrollToBottom();
+        }
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault(); 
+        sendMessage();
+    }
+});
+
+userInput.focus();
+</script>
+</body>
+</html>
