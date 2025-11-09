@@ -3,21 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot Clínica - Gemini</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <title>Chatbot Clínica</title>
+    <!-- Fonte 'Inter' para um visual mais limpo e moderno -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* Variáveis de Cores */
         :root {
-            --color-primary: #007bff; /* Azul primário */
-            --color-secondary: #28a745; /* Verde para mensagens do usuário */
-            --color-background: #f8f9fa; /* Fundo geral */
-            --color-chat-bg: #e9ecef; /* Fundo da janela do chat */
-            --color-text-dark: #343a40;
-            --color-text-light: #ffffff;
+            --color-primary: #007A7C; /* Verde-azulado profissional */
+            --color-secondary: #EFF3F6; /* Fundo suave da janela do chat */
+            --color-user-bg: #007A7C;
+            --color-bot-bg: #FFFFFF;
+            --color-background: #F7F9FA;
+            --color-text-dark: #333333;
+            --color-text-light: #FFFFFF;
+            --color-text-secondary: #6c757d;
+            --color-border: #E0E0E0;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 0;
             background-color: var(--color-background);
@@ -25,106 +32,185 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .chat-container {
             width: 100%;
-            max-width: 450px; /* Mais estreito, como um app de celular */
-            background: var(--color-text-light);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            border-radius: 12px;
+            max-width: 450px;
+            background: var(--color-bot-bg);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05); /* Sombra mais suave */
+            border-radius: 16px; /* Bordas mais arredondadas */
             display: flex;
             flex-direction: column;
-            height: 90vh; /* Ocupa mais tela verticalmente */
-            overflow: hidden; /* Para garantir que o arredondamento funcione */
+            height: 90vh;
+            max-height: 700px; /* Limite de altura para telas grandes */
+            overflow: hidden;
+            border: 1px solid var(--color-border);
         }
 
         .chat-header {
             background-color: var(--color-primary);
             color: var(--color-text-light);
-            padding: 20px 15px;
+            padding: 16px 20px;
             text-align: center;
             font-weight: 700;
-            font-size: 1.2em;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
-        
+
+        .chat-header .icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
         /* Janela de Mensagens */
         .chat-window {
             flex-grow: 1;
-            padding: 20px 15px;
+            padding: 20px;
             overflow-y: auto;
-            background-color: var(--color-chat-bg);
+            background-color: var(--color-secondary);
             /* Scrollbar estilizada */
             scrollbar-width: thin;
-            scrollbar-color: var(--color-primary) #e9ecef;
+            scrollbar-color: var(--color-primary) var(--color-secondary);
+        }
+        
+        .chat-window::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-window::-webkit-scrollbar-thumb {
+            background-color: var(--color-primary);
+            border-radius: 3px;
+        }
+        .chat-window::-webkit-scrollbar-track {
+            background-color: var(--color-secondary);
         }
 
+        /* Linha de Mensagem (para avatar + balão) */
+        .message-row {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: flex-end; /* Alinha o avatar com o fim do balão */
+            gap: 10px;
+        }
+
+        .user-message-row {
+            justify-content: flex-end;
+        }
+
+        .bot-message-row {
+            justify-content: flex-start;
+        }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* Garante que o SVG fique contido */
+            flex-shrink: 0; /* Impede que o avatar encolha */
+        }
+
+        .avatar .icon {
+            width: 18px;
+            height: 18px;
+            fill: var(--color-text-secondary);
+        }
+
+        .bot-avatar .icon {
+            fill: var(--color-primary);
+        }
+        .user-avatar {
+            background-color: var(--color-user-bg);
+        }
+        .user-avatar .icon {
+            fill: var(--color-text-light);
+        }
+        
         /* Estilo da mensagem */
         .message {
-            margin-bottom: 15px;
             padding: 10px 14px;
             border-radius: 12px;
-            max-width: 85%;
+            max-width: 80%; /* Um pouco menor para dar espaço ao avatar */
             line-height: 1.5;
             position: relative;
-            word-wrap: break-word; /* Garante que mensagens longas quebrem a linha */
+            word-wrap: break-word;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
         
         /* Mensagem do Usuário (Nossa) */
         .user-message {
-            background-color: var(--color-secondary);
+            background-color: var(--color-user-bg);
             color: var(--color-text-light);
-            margin-left: auto;
-            border-bottom-right-radius: 2px;
-            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+            border-bottom-right-radius: 4px; /* "Cauda" da mensagem */
         }
         
         /* Mensagem do Bot (Resposta) */
         .bot-message {
-            background-color: var(--color-text-light);
+            background-color: var(--color-bot-bg);
             color: var(--color-text-dark);
-            margin-right: auto;
-            border: 1px solid #dee2e6;
-            border-bottom-left-radius: 2px;
-            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--color-border);
+            border-bottom-left-radius: 4px; /* "Cauda" da mensagem */
         }
 
         /* Área de Input */
         .chat-input {
             display: flex;
-            padding: 10px 15px;
-            border-top: 1px solid #ddd;
+            padding: 15px;
+            border-top: 1px solid var(--color-border);
             background-color: #fff;
+            gap: 10px;
         }
         
         .chat-input input {
             flex-grow: 1;
             padding: 12px 18px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--color-border);
             border-radius: 25px;
-            margin-right: 10px;
             font-size: 16px;
             outline: none;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            font-family: 'Inter', sans-serif;
         }
 
         .chat-input input:focus {
             border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(0, 122, 124, 0.1);
         }
         
         .chat-input button {
             background-color: var(--color-primary);
             color: white;
             border: none;
-            padding: 0 20px;
-            border-radius: 25px;
+            width: 48px; /* Tamanho fixo para o ícone */
+            height: 48px;
+            border-radius: 50%;
             cursor: pointer;
             font-weight: 700;
             transition: background-color 0.3s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .chat-input button .icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            transform: translateX(1px); /* Ajuste fino do ícone */
         }
 
         .chat-input button:hover:not(:disabled) {
-            background-color: #0056b3;
+            background-color: #005f60;
         }
 
         .chat-input button:active:not(:disabled) {
@@ -138,15 +224,16 @@
         
         /* Indicador de carregamento (Opcional, mas útil) */
         .loading-dots {
-            display: inline-block;
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
         }
 
         .loading-dots span {
             display: inline-block;
             width: 8px;
             height: 8px;
-            margin: 0 2px;
-            background-color: var(--color-primary);
+            background-color: var(--color-text-secondary);
             border-radius: 50%;
             animation: bounce 1.4s infinite ease-in-out both;
         }
@@ -163,79 +250,163 @@
 </head>
 <body>
 
+<svg width="0" height="0" style="display: none;">
+    <symbol id="svg-health" viewBox="0 0 24 24">
+        <path d="M19,3H5C3.9,3,3,3.9,3,5v14c0,1.1,0.9,2,2,2h14c1.1,0,2-0.9,2-2V5C21,3.9,20.1,3,19,3z M17,13.5h-2.5v2.5h-3V13.5H9
+	v-3h2.5V8h3v2.5H17V13.5z"/>
+    </symbol>
+    <symbol id="svg-user" viewBox="0 0 24 24">
+        <path d="M12,12c2.2,0,4-1.8,4-4s-1.8-4-4-4S8,5.8,8,8S9.8,12,12,12z M12,14c-2.7,0-8,1.3-8,4v2h16v-2C20,15.3,14.7,14,12,14z"/>
+    </symbol>
+    <symbol id="svg-send" viewBox="0 0 24 24">
+        <path d="M2.01,21L23,12L2.01,3L2,10l15,2l-15,2L2.01,21z"/>
+    </symbol>
+</svg>
+
+
 <div class="chat-container">
     <div class="chat-header">
-        🏥 Chatbot Clínica Médica
+        <svg class="icon" aria-hidden="true">
+            <use xlink:href="#svg-health"></use>
+        </svg>
+        Atendente Virtual - Clínica Saúde
     </div>
     <div class="chat-window" id="chat-window">
-        <div class="message bot-message">
-            Olá! Eu sou a atendente virtual da clínica. Em que posso te ajudar hoje?
-        </div>
-        <div class="message bot-message" id="loading-indicator" style="display:none;">
-            <div class="loading-dots">
-                <span class="dot1"></span>
-                <span class="dot2"></span>
-                <span class="dot3"></span>
+        <!-- Mensagem Inicial do Bot -->
+        <div class="message-row bot-message-row">
+            <div class="avatar bot-avatar">
+                <svg class="icon" aria-hidden="true"><use xlink:href="#svg-health"></use></svg>
+            </div>
+            <div class="message bot-message">
+                Olá! Eu sou a atendente virtual da Clínica Saúde. Em que posso te ajudar hoje?
             </div>
         </div>
+        
+        
     </div>
     <div class="chat-input">
         <input type="text" id="user-input" placeholder="Digite sua mensagem..." autofocus>
-        <button id="send-button">Enviar</button>
+        <button id="send-button" title="Enviar Mensagem">
+            <svg class="icon" aria-hidden="true"><use xlink:href="#svg-send"></use></svg>
+        </button>
     </div>
 </div>
 
 <script>
-   const API_ENDPOINT = 'https://projeto-chatbot-clinica-mvp.onrender.com/chat'; // Ou a URL do Render
-   const chatWindow = document.getElementById('chat-window');
-   const userInput = document.getElementById('user-input');
-   const sendButton = document.getElementById('send-button');
-   const loadingIndicator = document.getElementById('loading-indicator');
+    const API_ENDPOINT = 'https://projeto-chatbot-clinica-mvp.onrender.com/chat'; // Ou a URL do Render
+    const chatWindow = document.getElementById('chat-window');
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
     
-    let conversationHistory = []; // Mantém o histórico visual
-    let currentSessionId = null; // <-- NOVO: Guarda o ID da sessão atual
+    // REMOVIDO: const loadingIndicator = document.getElementById('loading-indicator');
+    // Agora é dinâmico.
 
-    // ... (elementos da UI, addMessageToUI, scrollToBottom - idênticos) ...
+    let conversationHistory = []; // Mantém o histórico visual (Seu código original)
+    let currentSessionId = null; // Guarda o ID da sessão atual
+
+    // --- (NOVOS) HELPERs DE UI PARA O NOVO DESIGN ---
+    const botIcon = `<svg class="icon" aria-hidden="true"><use xlink:href="#svg-health"></use></svg>`;
+    const userIcon = `<svg class="icon" aria-hidden="true"><use xlink:href="#svg-user"></use></svg>`;
+    const loadingDots = `
+        <div class="loading-dots">
+            <span class="dot1"></span>
+            <span class="dot2"></span>
+            <span class="dot3"></span>
+        </div>`;
+    const loadingIndicatorId = 'loading-indicator-row'; // ID para a LINHA de loading
+    
+    // --- (ADAPTADO) Função de rolar para baixo ---
     function scrollToBottom() {
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-}
-
-function addMessageToUI(sender, text) {
-    // --- ADICIONE ESTE LOG ---
-    console.log(`addMessageToUI chamada com: sender=${sender}, text=${text}`); 
-    // -------------------------
-    const msgDiv = document.createElement('div');
-    msgDiv.classList.add('message');
-    msgDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
-    msgDiv.textContent = text;
-
-    // --- ADICIONE ESTE LOG ---
-    if (!chatWindow) {
-         console.error("ERRO: Elemento chatWindow não encontrado!");
-         return; // Sai se não encontrar a janela
+        // Adiciona um leve atraso para garantir que o DOM foi renderizado
+        setTimeout(() => {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }, 50);
     }
-    // -------------------------
 
-    chatWindow.appendChild(msgDiv); 
-    scrollToBottom();
-}
+    // Esta função foi reescrita para criar o novo layout de [Avatar] + [Balão]
+    function addMessageToUI(sender, text) {
+        console.log(`addMessageToUI (v2) chamada com: sender=${sender}, text=${text}`); 
+        
+        if (!chatWindow) {
+            console.error("ERRO: Elemento chatWindow não encontrado!");
+            return;
+        }
+
+        const messageRow = document.createElement('div');
+        messageRow.classList.add('message-row', `${sender}-message-row`);
+
+        const avatar = document.createElement('div');
+        avatar.classList.add('avatar', `${sender}-avatar`);
+        avatar.innerHTML = (sender === 'user') ? userIcon : botIcon;
+        
+        const message = document.createElement('div');
+        message.classList.add('message', `${sender}-message`);
+        message.textContent = text; // Define o texto da mensagem
+
+        if (sender === 'user') {
+            // Ordem: [Mensagem] [Avatar]
+            messageRow.appendChild(message);
+            messageRow.appendChild(avatar);
+        } else {
+            // Ordem: [Avatar] [Mensagem]
+            messageRow.appendChild(avatar);
+            messageRow.appendChild(message);
+        }
+        
+        chatWindow.appendChild(messageRow);
+        scrollToBottom();
+    }
+
+    // --- (NOVAS) Funções para controlar o loading dinâmico ---
+    function showLoadingIndicator() {
+        // Previne múltiplos indicadores
+        if (document.getElementById(loadingIndicatorId)) return;
+
+        const messageRow = document.createElement('div');
+        messageRow.classList.add('message-row', 'bot-message-row');
+        messageRow.id = loadingIndicatorId; // ID para facilitar a remoção
+
+        const avatar = document.createElement('div');
+        avatar.classList.add('avatar', 'bot-avatar');
+        avatar.innerHTML = botIcon;
+        
+        const message = document.createElement('div');
+        message.classList.add('message', 'bot-message');
+        message.innerHTML = loadingDots;
+        message.style.paddingTop = "16px"; // Ajuste para centralizar os pontos
+        message.style.paddingBottom = "16px";
+
+        messageRow.appendChild(avatar);
+        messageRow.appendChild(message);
+        chatWindow.appendChild(messageRow);
+        scrollToBottom();
+    }
+
+    function removeLoadingIndicator() {
+        const indicator = document.getElementById(loadingIndicatorId);
+        if (indicator) {
+            indicator.remove();
+        }
+    }
 
     async function sendMessage() {
         console.log("sendMessage foi chamada!");
 
-    // --- CORREÇÃO AQUI ---
-    const message = userInput.value.trim(); // 1. Pega o valor do input
-    if (message === "") return;             // 2. AGORA checa se está vazio
-    // --- FIM DA CORREÇÃO ---
-    // (O resto da UI: limpa input, desabilita botão, mostra msg usuário - continua aqui)
-    userInput.value = ''; // Limpa o input *depois* de pegar a mensagem
-    sendButton.disabled = true;
-    console.log("Antes de chamar addMessageToUI para o usuário. Mensagem:", message);
-    addMessageToUI('user', message);
-    console.log("Depois de chamar addMessageToUI para o usuário.");
-    loadingIndicator.style.display = 'flex';
-    scrollToBottom();
-    // 
+        const message = userInput.value.trim(); 
+        if (message === "") return; 
+ 
+        userInput.value = ''; 
+        sendButton.disabled = true;
+        
+        console.log("Antes de chamar addMessageToUI para o usuário. Mensagem:", message);
+        addMessageToUI('user', message); // Usa a nova função adaptada
+        console.log("Depois de chamar addMessageToUI para o usuário.");
+        
+        // --- MUDANÇA AQUI ---
+        // loadingIndicator.style.display = 'flex'; // Substituído
+        showLoadingIndicator(); // Nova função
+        // --- FIM DA MUDANÇA ---
+        
         // (Histórico local conversationHistory não é mais enviado, mas ainda usado para UI)
         // conversationHistory.push({ role: "user", parts: [{ text: message }] }); 
 
@@ -259,35 +430,42 @@ function addMessageToUI(sender, text) {
             currentSessionId = data.session_id; 
             console.log("Session ID Atual:", currentSessionId); // Para debug no navegador
 
-            // ... (UI: esconde loading, mostra msg bot) ...
-            loadingIndicator.style.display = 'none';
-            addMessageToUI('bot', botReply);
+            // --- MUDANÇA AQUI ---
+            // loadingIndicator.style.display = 'none'; // Substituído
+            removeLoadingIndicator(); // Nova função
+            addMessageToUI('bot', botReply); // Usa a nova função adaptada
+            // --- FIM DA MUDANÇA ---
             
             // (Histórico local para UI)
             // conversationHistory.push({ role: "model", parts: [{ text: botReply }] }); 
 
         } catch (error) {
-            // ... (código de tratamento de erro idêntico) ...
             console.error('Erro ao comunicar com a API:', error);
-            loadingIndicator.style.display = 'none';
+            
+         
+            // loadingIndicator.style.display = 'none'; 
+            removeLoadingIndicator(); // Nova função
+            // --- FIM DA MUDANÇA ---
+            
             addMessageToUI('bot', '❌ Desculpe, erro ao conectar com o servidor.');
         } finally {
-            // ... (código finally idêntico) ...
             sendButton.disabled = false;
             userInput.focus();
             scrollToBottom();
         }
     }
 
+  
     sendButton.addEventListener('click', sendMessage);
     userInput.addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        e.preventDefault(); 
-        sendMessage();
-    }
-});
+        if (e.key === 'Enter') {
+            e.preventDefault(); 
+            sendMessage();
+        }
+    });
 
-userInput.focus();
+    userInput.focus();
 </script>
+
 </body>
 </html>
